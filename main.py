@@ -10,7 +10,7 @@ import astar
 from numpy import sort
 from simanneal import Annealer
 
-number_of_nodes = 10
+number_of_nodes = 80
 number_of_edges = 4
 max_distance = 1000
 g = nx.connected_watts_strogatz_graph(number_of_nodes, number_of_edges, .5, tries=100, seed=None)
@@ -29,14 +29,13 @@ for i in range(number_of_nodes - 1):
 x2 = copy.deepcopy(x)
 x = [0] + x + [0]
 x1 = copy.deepcopy(x)
-print(x)
+# print(x)
 
 normalize = 1.0
 traffic_base = 1.0
 velocity = 10.0  # m/s
 alfa = 1.0
 beta = 1.0
-gamma = 1.0
 for edge in g.edges:
     distance = math.sqrt((g.nodes[edge[0]]['x'] - g.nodes[edge[1]]['x']) ** 2
                          + (g.nodes[edge[0]]['y'] - g.nodes[edge[1]]['y']) ** 2) * (random() + 1.0)
@@ -50,12 +49,13 @@ for edge in g.edges:
 
 shortest_paths = dict(nx.shortest_path(g, source=None, target=None, weight='objective_frag'))
 shortest_paths_length = dict(nx.shortest_path_length(g, source=None, target=None, weight='objective_frag'))
-print(shortest_paths_length)
+# print(shortest_paths_length)
 
 
 # for i in range(len(g.nodes)):
 #     print(shortest_paths_length[i])
 
+gamma = 1.0
 
 class PizzaDeliveryProblemAnnealing(Annealer):
     def move(self):
@@ -66,8 +66,17 @@ class PizzaDeliveryProblemAnnealing(Annealer):
 
     def energy(self):
         e = 0
+        time = 0
+        edges_time = nx.get_edge_attributes(g, 'time')
         for i in range(len(self.state) - 1):
-            e += shortest_paths_length[self.state[i]][self.state[i + 1]]
+            current_time = 0
+            path = shortest_paths[self.state[i]][self.state[i+1]]
+            for i in range(len(path) - 1):
+                lower = min(path[i], path[i+1])
+                higher = max(path[i], path[i+1])
+                current_time += edges_time[(lower, higher)]
+            time += current_time
+            e += shortest_paths_length[self.state[i]][self.state[i + 1]] + gamma * time**2
         return e
 
 
@@ -88,13 +97,22 @@ labels = nx.get_edge_attributes(g, 'objective_frag')
 number_of_iterations = 50000
 e_max = float("inf")
 itinerary_max = []
+time = 0
+edges_time = nx.get_edge_attributes(g, 'time')
 for i in range(number_of_iterations):
     a = randint(1, len(x1) - 2)
     b = randint(1, len(x1) - 2)
     x1[a], x1[b] = x1[b], x1[a]
     e = 0
     for k in range(len(x1) - 1):
-        e += shortest_paths_length[x1[k]][x1[k + 1]]
+        current_time = 0
+        path = shortest_paths[x1[k]][x1[k + 1]]
+        for j in range(len(path) - 1):
+            lower = min(path[j], path[j + 1])
+            higher = max(path[j], path[j + 1])
+            current_time += edges_time[(lower, higher)]
+        time += current_time
+        e += shortest_paths_length[x1[k]][x1[k + 1]] + gamma * time**2
     if e < e_max:
         e_max = e
         itinerary_max = copy.deepcopy(x1)
@@ -135,6 +153,8 @@ cost = 0
 current_heuristic_value = 0
 heuristic = 0
 length = len(x2)
+time = 0
+
 for k in range(length):
     cost_min = float("inf")
     for i in x2:
@@ -148,9 +168,16 @@ for k in range(length):
             cost_min = cost
             new_el = i
             current_heuristic_value = heuristic_dictionary[last_el][new_el]
+    current_time = 0
+    partial_path = shortest_paths[last_el][i]
+    for j in range(len(partial_path) - 1):
+        lower = min(partial_path[j], partial_path[j + 1])
+        higher = max(partial_path[j], partial_path[j + 1])
+        current_time += edges_time[(lower, higher)]
+    time += current_time
     path.append(new_el)
     last_el = new_el
-    cost_sum += cost_min
+    cost_sum += cost_min + gamma * time**2
     x2.remove(new_el)
     if current_heuristic_value in shortest_distances_heuristic:
         shortest_distances_heuristic.remove(current_heuristic_value)
@@ -163,8 +190,8 @@ print(path)
 print(cost_sum)
 
 
-# plt.subplot(111)
-# edge_labels=nx.draw_networkx_edge_labels(g,pos=nx.spring_layout(g), edge_labels = labels)
-# nx.draw(g, with_labels=True, font_weight='bold')
-# plt.show()
+plt.subplot(111)
+edge_labels=nx.draw_networkx_edge_labels(g,pos=nx.spring_layout(g), edge_labels = labels)
+nx.draw(g, with_labels=True, font_weight='bold')
+plt.show()
 
