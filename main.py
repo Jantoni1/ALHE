@@ -1,13 +1,11 @@
 import math
 
 import copy
-from abc import abstractmethod
 
 import networkx as nx
 import matplotlib.pyplot as plt
 from random import random, randint
-import astar
-from numpy import sort
+import simplejson
 from simanneal import Annealer
 
 
@@ -26,49 +24,23 @@ from simanneal import Annealer
 number_of_nodes = 80
 number_of_edges = 4
 max_distance = 1000
-g = nx.connected_watts_strogatz_graph(number_of_nodes, number_of_edges, .5, tries=100, seed=None)
-# print(g.edges)
-for i in range(number_of_nodes):
-    g.add_node(i, x=random() * max_distance, y=random() * max_distance)
+h = nx.read_graphml('graph')
+g = nx.convert_node_labels_to_integers(h)
 
-#
-# print(g.nodes[1])
-# print(g.nodes.data()[1]['x'])
-# print(g.edges)
-x = []
-for i in range(number_of_nodes - 1):
-    if random() < 0.25:
-        x = x + [i + 1]
+f = open('route', 'r')
+x = simplejson.load(f)
+f.close()
+
 x2 = copy.deepcopy(x)
 x = [0] + x + [0]
 x1 = copy.deepcopy(x)
-# print(x)
-
-normalize = 1.0
-traffic_base = 1.0
-velocity = 10.0  # m/s
-alfa = 1.0
-beta = 1.0
-for edge in g.edges:
-    distance = math.sqrt((g.nodes[edge[0]]['x'] - g.nodes[edge[1]]['x']) ** 2
-                         + (g.nodes[edge[0]]['y'] - g.nodes[edge[1]]['y']) ** 2) * (random() + 1.0)
-    traffic = random() * normalize + traffic_base
-    time = distance / velocity * traffic
-    g.add_edge(edge[0], edge[1],
-               distance=distance,
-               traffic=traffic,
-               time=distance / velocity * traffic,
-               objective_frag=alfa * distance + beta * time)
 
 shortest_paths = dict(nx.shortest_path(g, source=None, target=None, weight='objective_frag'))
 shortest_paths_length = dict(nx.shortest_path_length(g, source=None, target=None, weight='objective_frag'))
-# print(shortest_paths_length)
 
-
-# for i in range(len(g.nodes)):
-#     print(shortest_paths_length[i])
 
 gamma = 1.0
+
 
 class PizzaDeliveryProblemAnnealing(Annealer):
     def move(self):
@@ -96,15 +68,11 @@ class PizzaDeliveryProblemAnnealing(Annealer):
 initial_state = x
 pizza = tsp = PizzaDeliveryProblemAnnealing(initial_state)
 itinerary, miles = tsp.anneal()
+
 print("Dla symulowanego wyzarzania:")
 print(itinerary)
-# for i in range(len(itinerary) - 1):
-#     print(shortest_paths_length[itinerary[i]][itinerary[i+1]])
 print(miles)
-# print(x)
-# nx.write_gml(g, "graph")
-# sp = dict(nx.all_pairs_shortest_path(g))
-# print(sp[1])
+
 labels = nx.get_edge_attributes(g, 'objective_frag')
 
 number_of_iterations = 50000
@@ -151,11 +119,9 @@ for i in x2:
 x2.remove(0)
 
 heuristic_set = sorted(heuristic_set)
-# print(heuristic_set)
 shortest_distances_heuristic = heuristic_set[0:len(x2)]
 heuristic_set = heuristic_set[len(x2):len(heuristic_set)]
-# print(heuristic_set)
-# print(shortest_distances_heuristic)
+
 
 path = [0]
 cost_sum = 0
