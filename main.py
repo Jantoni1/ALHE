@@ -27,6 +27,20 @@ max_distance = 1000
 h = nx.read_graphml('graph')
 g = nx.convert_node_labels_to_integers(h)
 
+alfa = 1.0
+beta = 1.0
+gamma = 1.0
+
+edges_time = nx.get_edge_attributes(g, 'time')
+edges_distance = nx.get_edge_attributes(g, 'distance')
+for edge in g.edges:
+    g[edge[0]][edge[1]]['objective_frag'] = alfa * edges_distance[(edge[0], edge[1])] + beta * edges_time[(edge[0], edge[1])]
+
+pos = {}
+for i in range(len(g.nodes)):
+    pos[i] = [g.nodes[i]['x'], g.nodes[i]['y']]
+print(pos)
+
 f = open('route', 'r')
 x = simplejson.load(f)
 f.close()
@@ -37,9 +51,6 @@ x1 = copy.deepcopy(x)
 
 shortest_paths = dict(nx.shortest_path(g, source=None, target=None, weight='objective_frag'))
 shortest_paths_length = dict(nx.shortest_path_length(g, source=None, target=None, weight='objective_frag'))
-
-
-gamma = 1.0
 
 
 class PizzaDeliveryProblemAnnealing(Annealer):
@@ -79,7 +90,7 @@ number_of_iterations = 50000
 e_max = float("inf")
 itinerary_max = []
 time = 0
-edges_time = nx.get_edge_attributes(g, 'time')
+
 for i in range(number_of_iterations):
     a = randint(1, len(x1) - 2)
     b = randint(1, len(x1) - 2)
@@ -170,7 +181,7 @@ print(cost_sum)
 
 
 plt.subplot(111)
-edge_labels=nx.draw_networkx_edge_labels(g,pos=nx.spring_layout(g), edge_labels = labels)
-nx.draw(g, with_labels=True, font_weight='bold')
+# edge_labels=nx.draw_networkx_edge_labels(g,pos=nx.spring_layout(g), edge_labels = labels)
+nx.draw(g, pos, with_labels=True, font_weight='bold')
 plt.show()
 
